@@ -1,7 +1,12 @@
 package domain.auth
 
-sealed trait ValidationError extends Product with Serializable
-case object UserAlreadyExists extends ValidationError
-case object AccountCreationFailed extends ValidationError
-case object UserNotFound extends ValidationError
-case object AuthenticationFailed extends ValidationError
+class ValidationError(message: String)
+
+case class UserAlreadyExists() extends ValidationError("Account creation failed")
+
+case class AccountCreationFailed(cause: Option[String] = None)
+  extends ValidationError("Account creation failed")
+
+case class UserNotFound() extends ValidationError("No User found")
+
+case class AuthenticationFailed() extends ValidationError("Authentication Faild")

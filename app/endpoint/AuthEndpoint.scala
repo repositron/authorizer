@@ -11,7 +11,7 @@ import javax.inject.Inject
 class AuthEndpoint @Inject()(authController: AuthController) extends SimpleRouter {
   override def routes: Routes = {
     case POST(p"/signup") =>  authController.signup()
-    case GET(p"/signup") =>  authController.index()
+    case GET(p"/signup/$to") =>  authController.getUser(to)
     case GET(p"/") => authController.index()
   }
 }

@@ -1,15 +1,16 @@
 package endpoint
 
-import domain.auth.{AuthService, User}
+import domain.auth.{AuthService, User, UserSignup, UserSignupResponse, UserSignupSuccessResponse}
 import play.api.Logger
 import play.api.data.Form
 import play.api.i18n.Messages.implicitMessagesProviderToMessages
 import play.api.i18n.MessagesApi
-import play.api.libs.json.Json
+import play.api.libs.json.{JsError, JsObject, JsString, JsSuccess, JsValue, Json}
 import play.api.mvc.{AbstractController, Action, AnyContent, ControllerComponents, Handler, MessagesActionBuilder, MessagesRequest, Request}
 import play.i18n.MessagesApi
 
 import javax.inject.Inject
+import scala.None
 import scala.concurrent.Future
 
 class AuthController @Inject()(messagesAction: MessagesActionBuilder, controllerComponents: ControllerComponents, authService: AuthService) extends  AbstractController(controllerComponents) {
@@ -21,50 +22,47 @@ class AuthController @Inject()(messagesAction: MessagesActionBuilder, controller
 
   private val logger = Logger(getClass)
 
-  private val signupForm: Form[(String, String)] = {
-    import play.api.data.Forms._
-
-    Form(
-      tuple(
-        "user_id" -> text,
-        "password" -> text,
-      )
-    )
-  }
-
-  //case class SignupErrorResponse(message: String, )
-
-  def signup() : Action[AnyContent] = {
-    messagesAction { implicit request: MessagesRequest[AnyContent] =>
+  def signup() : Action[JsValue] = {
+    messagesAction(parse.json) { implicit request: MessagesRequest[JsValue] =>
       logger.info(s"signup received")
-      signupForm.bindFromRequest.fold(
-        formWithErrors => {
-          BadRequest(Json.obj("message" -> "formError1"))
-        },
-        signUp => {
-          authService.signup(signUp._1, signUp._2).fold(
+      request.body.validate[UserSignup] match {
+        case JsSuccess(userSignup, _) =>
+          authService.signup(userSignup).fold(
             error =>  {
               BadRequest(Json.obj("message" -> "could not creat"))
             },
             success => {
-              Ok("it was ok")
+              Ok(Json.obj("message" -> success,
+                  "user" -> Json.obj("user_id" -> userSignup.user_id, "nickname" -> "nick")))
             }
           )
-        }
+        case JsError(errs) =>
+          logger.error(s"Unable to parse payload: $errs")
+          BadRequest(Json.obj("message" -> "formError1"))
+      }
+    }
+  }
+  def getUser(userId: String): Action[JsValue] = {
+    messagesAction(parse.json) { implicit request: MessagesRequest[JsValue] =>
+      logger.info(s"get user received $userId")
+      authService.getUser(userId).fold(
+        error => BadRequest(Json.obj("message" -> "User details by user_id")),
+        success => Ok(
+          Json.obj("message" -> "User details by user_id",
+            "user" -> formatGetUser(success))
+        )
       )
     }
   }
 
-/*  def processSignupJson[A]()(implicit request:  Request[A]): Action[AnyContent] = {
-    def failure(badForm: Form[(String, String)]) = {
-     BadRequest(badForm.errorsAsJson)
+  private def formatGetUser(user: User) : JsObject = {
+    val nickname = user.nickName.getOrElse(user.userId)
+    val jsonMsg = Json.obj("user_id" -> user.userId, "nickname" -> nickname)
+    user.comment match {
+      case Some(c) => jsonMsg + ("comment" -> JsString(c))
+      case None => jsonMsg
     }
+    //jsonMsg + ("comment" -> JsString(user.comment.get))
+  }
 
-    def success(input: Form[(String, String)]) = {
-      postResourceHandler.create(input).map { post =>
-        Created(Json.toJson(post)).withHeaders(LOCATION -> post.link)
-      }
-    }
-    signupForm.bindFromRequest().fold(failure, success)
-  }*/
 }
