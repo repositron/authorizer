@@ -3,4 +3,4 @@
 # https://www.playframework.com/documentation/latest/ScalaRouting
 # ~~~~
 
-->         /             v1.invoice.Router
+->         /api            endpoint.AuthEndpoint

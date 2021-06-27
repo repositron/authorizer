@@ -1,7 +1,7 @@
 package domain.auth
 
 class AuthService {
-  def signup(user: User) : Either[ValidationError, String] = {
+  def signup(userId: String, password: String) : Either[ValidationError, String] = {
     Right("Account successfully created")
   }
 
