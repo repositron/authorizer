@@ -2,5 +2,5 @@
 # This file defines all application routes (Higher priority routes first)
 # https://www.playframework.com/documentation/latest/ScalaRouting
 # ~~~~
-
-->         /            endpoint.AuthEndpoint
+GET         /users/:id      endpoint.AuthController.getUser(id: String)
+POST       /signup          endpoint.AuthController.signup()

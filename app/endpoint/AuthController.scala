@@ -1,6 +1,6 @@
 package endpoint
 
-import domain.auth.{AuthService, User, UserSignup, UserSignupResponse, UserSignupSuccessResponse}
+import domain.auth.{AuthService, User, UserNotFound, UserSignup, UserSignupResponse, UserSignupSuccessResponse, ValidationError}
 import play.api.Logger
 import play.api.data.Form
 import play.api.i18n.Messages.implicitMessagesProviderToMessages
@@ -10,8 +10,6 @@ import play.api.mvc.{AbstractController, Action, AnyContent, ControllerComponent
 import play.i18n.MessagesApi
 
 import javax.inject.Inject
-import scala.None
-import scala.concurrent.Future
 
 class AuthController @Inject()(messagesAction: MessagesActionBuilder, controllerComponents: ControllerComponents, authService: AuthService) extends  AbstractController(controllerComponents) {
   def index(): Action[AnyContent]  = {
@@ -29,11 +27,18 @@ class AuthController @Inject()(messagesAction: MessagesActionBuilder, controller
         case JsSuccess(userSignup, _) =>
           authService.signup(userSignup).fold(
             error =>  {
-              BadRequest(Json.obj("message" -> "could not creat"))
+              val jsonMsg = Json.obj("message" -> ValidationError.message(error))
+              ValidationError.cause(error) match {
+                case Some(causeMessage) =>
+                  jsonMsg + ("cause" -> JsString(causeMessage))
+                case _ =>
+              }
+
+              BadRequest(jsonMsg)
             },
             success => {
               Ok(Json.obj("message" -> success,
-                  "user" -> Json.obj("user_id" -> userSignup.user_id, "nickname" -> "nick")))
+                  "user" -> Json.obj("user_id" -> userSignup.user_id, "nickname" -> userSignup.user_id)))
             }
           )
         case JsError(errs) =>
@@ -42,11 +47,13 @@ class AuthController @Inject()(messagesAction: MessagesActionBuilder, controller
       }
     }
   }
-  def getUser(userId: String): Action[JsValue] = {
-    messagesAction(parse.json) { implicit request: MessagesRequest[JsValue] =>
+  def getUser(userId: String): Action[AnyContent] = {
+    Action { implicit request =>
       logger.info(s"get user received $userId")
       authService.getUser(userId).fold(
-        error => BadRequest(Json.obj("message" -> "User details by user_id")),
+        error => {
+          BadRequest(Json.obj("message" -> ValidationError.message(error)))
+        },
         success => Ok(
           Json.obj("message" -> "User details by user_id",
             "user" -> formatGetUser(success))
