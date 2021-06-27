@@ -55,6 +55,7 @@
   <logger name="application" level="DEBUG" />
   <logger name="endpoint" level="DEBUG" />
   <logger name="controller" level="DEBUG" />
+  <logger name="domain.auth" level="DEBUG" />
 
   <root level="WARN">
     <appender-ref ref="ASYNCFILE" />

@@ -4,3 +4,4 @@
 # ~~~~
 GET         /users/:id      endpoint.AuthController.getUser(id: String)
 POST       /signup          endpoint.AuthController.signup()
+PATCH       /users/:id      endpoint.AuthController.updateUser(id: String)

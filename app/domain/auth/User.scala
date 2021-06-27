@@ -20,3 +20,9 @@ object UserSignupSuccessResponse {
   implicit val format1: Format[UserSignupResponse] = Json.format[UserSignupResponse]
   implicit val format2: Format[UserSignupSuccessResponse] = Json.format[UserSignupSuccessResponse]
 }
+
+
+case class UserUpdate(nickname: Option[String], comment: Option[String])
+object UserUpdate {
+  implicit val formats: Format[UserUpdate] = Json.format[UserUpdate]
+}

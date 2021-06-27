@@ -1,6 +1,6 @@
 package endpoint
 
-import domain.auth.{AuthService, User, UserNotFound, UserSignup, UserSignupResponse, UserSignupSuccessResponse, ValidationError}
+import domain.auth.{AuthService, User, UserNotFound, UserSignup, UserSignupResponse, UserSignupSuccessResponse, UserUpdate, ValidationError}
 import play.api.Logger
 import play.api.data.Form
 import play.api.i18n.Messages.implicitMessagesProviderToMessages
@@ -33,8 +33,7 @@ class AuthController @Inject()(messagesAction: MessagesActionBuilder, controller
                   jsonMsg + ("cause" -> JsString(causeMessage))
                 case _ =>
               }
-
-              BadRequest(jsonMsg)
+              NotFound(jsonMsg)
             },
             success => {
               Ok(Json.obj("message" -> success,
@@ -52,7 +51,7 @@ class AuthController @Inject()(messagesAction: MessagesActionBuilder, controller
       logger.info(s"get user received $userId")
       authService.getUser(userId).fold(
         error => {
-          BadRequest(Json.obj("message" -> ValidationError.message(error)))
+          NotFound(Json.obj("message" -> ValidationError.message(error)))
         },
         success => Ok(
           Json.obj("message" -> "User details by user_id",
@@ -70,6 +69,33 @@ class AuthController @Inject()(messagesAction: MessagesActionBuilder, controller
       case None => jsonMsg
     }
     //jsonMsg + ("comment" -> JsString(user.comment.get))
+  }
+
+  def updateUser(userId: String) : Action[JsValue] = {
+    messagesAction(parse.json) { implicit request: MessagesRequest[JsValue] =>
+      logger.info(s"update received")
+      request.body.validate[UserUpdate] match {
+        case JsSuccess(userUpdate, _) =>
+          authService.userUpdate(userId, userUpdate).fold(
+            updateError => {
+              val jsonMsg = Json.obj("message" -> ValidationError.message(updateError))
+              ValidationError.cause(updateError) match {
+                case Some(causeMessage) =>
+                  jsonMsg + ("cause" -> JsString(causeMessage))
+                case _ =>
+              }
+              NotFound(jsonMsg)
+            },
+            success => {
+              Ok(Json.obj("message" -> "User successfully updated",
+                "user" -> Json.obj("nickname" -> userUpdate.nickname, "comment" -> userUpdate.comment)))
+            }
+          )
+        case JsError(errs) =>
+          logger.error(s"Unable to parse payload: $errs")
+          BadRequest(Json.obj("message" -> "formError1"))
+      }
+    }
   }
 
 }
