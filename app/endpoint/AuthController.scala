@@ -6,9 +6,11 @@ import play.api.data.Form
 import play.api.i18n.Messages.implicitMessagesProviderToMessages
 import play.api.i18n.MessagesApi
 import play.api.libs.json.{JsError, JsObject, JsString, JsSuccess, JsValue, Json}
-import play.api.mvc.{AbstractController, Action, AnyContent, ControllerComponents, Handler, MessagesActionBuilder, MessagesRequest, Request}
+import play.api.mvc.{AbstractController, Action, AnyContent, ControllerComponents, Handler, Headers, MessagesActionBuilder, MessagesRequest, Request}
 import play.i18n.MessagesApi
 
+import java.nio.charset.StandardCharsets
+import java.util.Base64
 import javax.inject.Inject
 
 class AuthController @Inject()(messagesAction: MessagesActionBuilder, controllerComponents: ControllerComponents, authService: AuthService) extends  AbstractController(controllerComponents) {
@@ -73,6 +75,7 @@ class AuthController @Inject()(messagesAction: MessagesActionBuilder, controller
 
   def updateUser(userId: String) : Action[JsValue] = {
     messagesAction(parse.json) { implicit request: MessagesRequest[JsValue] =>
+
       logger.info(s"update received")
       request.body.validate[UserUpdate] match {
         case JsSuccess(userUpdate, _) =>
@@ -97,5 +100,6 @@ class AuthController @Inject()(messagesAction: MessagesActionBuilder, controller
       }
     }
   }
+
 
 }
