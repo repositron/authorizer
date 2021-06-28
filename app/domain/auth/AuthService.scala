@@ -58,6 +58,5 @@ class AuthService extends Logging {
         UserNotFound()
     else
       AccountRemovedSuccessfully()
-    // author
   }
 }

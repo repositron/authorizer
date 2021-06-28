@@ -1,6 +1,6 @@
 package endpoint
 
-import domain.auth.{AuthService, User, UserNotFound, UserSignup, UserSignupResponse, UserSignupSuccessResponse, UserUpdate, ValidationResponse}
+import domain.auth.{AccountRemovedSuccessfully, AuthService, AuthenticationFailed, User, UserNotFound, UserSignup, UserSignupResponse, UserSignupSuccessResponse, UserUpdate, ValidationResponse}
 import play.api.Logger
 import play.api.data.Form
 import play.api.i18n.Messages.implicitMessagesProviderToMessages
@@ -44,12 +44,14 @@ class AuthController @Inject()(messagesAction: MessagesActionBuilder, controller
               f(AuthenticatedRequest(user, request))
             case None =>
               logger.info(s"unauthorised")
-              Unauthorized
+              Unauthorized(Json.obj(
+                "message" -> ValidationResponse.message(AuthenticationFailed())))
           }
         }
         case None =>
-          logger.info(s"no Authenication header")
-          Unauthorized
+          logger.info(s"no Authorization header")
+          Unauthorized(Json.obj(
+            "message" -> ValidationResponse.message(AuthenticationFailed())))
       }
     }
   }
@@ -62,13 +64,6 @@ class AuthController @Inject()(messagesAction: MessagesActionBuilder, controller
           authService.signup(userSignup).fold(
             error => {
               validationErrorResponse(error)
-              /*val jsonMsg = Json.obj("message" -> ValidationResponse.message(error))
-              ValidationResponse.cause(error) match {
-                case Some(causeMessage) =>
-                  jsonMsg + ("cause" -> JsString(causeMessage))
-                case _ =>
-              }
-              NotFound(jsonMsg)*/
             },
             success => {
               Ok(Json.obj("message" -> success,
@@ -106,7 +101,6 @@ class AuthController @Inject()(messagesAction: MessagesActionBuilder, controller
     }
   }
 
-
   def updateUser(userId: String): Action[JsValue] = {
     messagesAction(parse.json) { implicit request: MessagesRequest[JsValue] =>
 
@@ -135,9 +129,17 @@ class AuthController @Inject()(messagesAction: MessagesActionBuilder, controller
     }
   }
 
-  def close(): Action[JsValue] = {
-    messagesAction(parse.json) { implicit request: MessagesRequest[JsValue] =>
-      Ok
+  def close(): Action[AnyContent] = {
+    Authenticated { implicit request =>
+      logger.info(s"closed received")
+      // use user from Authenticated
+      authService.userDelete(request.user) match {
+        case validation @ AccountRemovedSuccessfully() =>
+          Ok(Json.obj("message" -> ValidationResponse.message(validation)))
+        case _ =>
+          // should happen because user wouldn"t be authorised
+          NotFound(Json.obj("message" -> ValidationResponse.message(UserNotFound())))
+      }
     }
   }
 }

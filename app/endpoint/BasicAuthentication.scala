@@ -1,16 +1,9 @@
 package endpoint
 
-import domain.auth.ValidationResponse
-
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 
 object BasicAuthentication {
-
-  // headers: Headers
-  //val authorization = headers.get("Authorization")
-
-
   def authorized(authorizationStr: String)(getUserFn: (String, String) => Boolean) : Option[String] = {
 
     def base64Decode(str: String) : String =
