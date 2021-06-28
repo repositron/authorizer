@@ -16,12 +16,6 @@ import java.util.Base64
 import javax.inject.Inject
 
 class AuthController @Inject()(messagesAction: MessagesActionBuilder, controllerComponents: ControllerComponents, authService: AuthService) extends  AbstractController(controllerComponents) {
-  def index(): Action[AnyContent] = {
-    Action { implicit request =>
-      Ok("hello world")
-    }
-  }
-
   private val logger = Logger(getClass)
 
   def validationErrorResponse(error: ValidationResponse): Result = {
