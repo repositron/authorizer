@@ -8,18 +8,18 @@ class BasicAuthenticationTest extends FunSuite {
   }
 
   test("valid user password") {
-    assert(BasicAuthentication.authorized("Basic dXNlcjE6cGFzc3dvcmQx")(authFn))
+    assert(BasicAuthentication.authorized("Basic dXNlcjE6cGFzc3dvcmQx")(authFn).isDefined)
   }
 
   test("invalid user password") {
-    assert(!BasicAuthentication.authorized("Basic ZGFmOmRmYXM")(authFn))
+    assert(!BasicAuthentication.authorized("Basic ZGFmOmRmYXM")(authFn).isDefined)
   }
 
   test("invalid format") {
-    assert(!BasicAuthentication.authorized("BasicZGFmOmRmYXM")(authFn))
+    assert(!BasicAuthentication.authorized("BasicZGFmOmRmYXM")(authFn).isDefined)
   }
 
   test("empty") {
-    assert(!BasicAuthentication.authorized("")(authFn))
+    assert(!BasicAuthentication.authorized("")(authFn).isDefined)
   }
 }

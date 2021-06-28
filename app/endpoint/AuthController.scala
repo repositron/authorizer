@@ -9,6 +9,7 @@ import play.api.libs.json.Format.GenericFormat
 import play.api.libs.json.{JsError, JsObject, JsString, JsSuccess, JsValue, Json}
 import play.api.mvc.{AbstractController, Action, AnyContent, ControllerComponents, Handler, Headers, MessagesActionBuilder, MessagesRequest, Request, Result}
 import play.i18n.MessagesApi
+import util.AuthenticatedRequest
 
 import java.nio.charset.StandardCharsets
 import java.util.Base64
@@ -31,6 +32,26 @@ class AuthController @Inject()(messagesAction: MessagesActionBuilder, controller
       case _ =>
     }
     NotFound(jsonMsg)
+  }
+
+  def Authenticated(f: AuthenticatedRequest => Result): Action[AnyContent] = {
+    Action { request =>
+      request.headers.get("Authorization") match {
+        case Some(auth) => {
+          BasicAuthentication.authorized(auth)(authService.check) match {
+            case Some(user) =>
+              logger.info(s"Authenticated $user")
+              f(AuthenticatedRequest(user, request))
+            case None =>
+              logger.info(s"unauthorised")
+              Unauthorized
+          }
+        }
+        case None =>
+          logger.info(s"no Authenication header")
+          Unauthorized
+      }
+    }
   }
 
   def signup(): Action[JsValue] = {
@@ -62,7 +83,7 @@ class AuthController @Inject()(messagesAction: MessagesActionBuilder, controller
   }
 
   def getUser(userId: String): Action[AnyContent] = {
-    Action { implicit request =>
+    Authenticated { implicit request =>
       logger.info(s"get user received $userId")
       authService.getUser(userId).fold(
         error => {

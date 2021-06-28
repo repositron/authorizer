@@ -35,6 +35,10 @@ class AuthService extends Logging {
     }
   }
 
+  def check(userId: String, password: String) : Boolean = {
+    getUser(userId).map(_ => true).getOrElse(false)
+  }
+
   def userUpdate(userId: String, userUpdate: UserUpdate) : Either[ValidationResponse, User] = {
     logger.info(s"userUpdate ${userId}")
     if (!usersMap.containsKey(userId))

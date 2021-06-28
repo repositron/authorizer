@@ -11,7 +11,7 @@ object BasicAuthentication {
   //val authorization = headers.get("Authorization")
 
 
-  def authorized(authorizationStr: String)(getUserFn: (String, String) => Boolean) : Boolean = {
+  def authorized(authorizationStr: String)(getUserFn: (String, String) => Boolean) : Option[String] = {
 
     def base64Decode(str: String) : String =
       new String(Base64.getDecoder.decode(str), StandardCharsets.UTF_8)
@@ -23,8 +23,8 @@ object BasicAuthentication {
     }
 
     decoded.split(":") match {
-      case Array(user, password) => getUserFn(user, password)
-      case _ => false
+      case Array(user, password) => if (getUserFn(user, password)) Some(user) else None
+      case _ => None
     }
   }
 }
