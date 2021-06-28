@@ -7,7 +7,19 @@ class BasicAuthenticationTest extends FunSuite {
     case _ => false
   }
 
-  test("dXNlcjE6cGFzc3dvcmQx") {
+  test("valid user password") {
     assert(BasicAuthentication.authorized("Basic dXNlcjE6cGFzc3dvcmQx")(authFn))
+  }
+
+  test("invalid user password") {
+    assert(!BasicAuthentication.authorized("Basic ZGFmOmRmYXM")(authFn))
+  }
+
+  test("invalid format") {
+    assert(!BasicAuthentication.authorized("BasicZGFmOmRmYXM")(authFn))
+  }
+
+  test("empty") {
+    assert(!BasicAuthentication.authorized("")(authFn))
   }
 }

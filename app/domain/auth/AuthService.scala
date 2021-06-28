@@ -12,7 +12,7 @@ class AuthService extends Logging {
   logger.info("AuthService")
   val usersMap: ConcurrentHashMap[String, User] = new ConcurrentHashMap
 
-  def signup(userSignup: UserSignup) : Either[ValidationError, String] = {
+  def signup(userSignup: UserSignup) : Either[ValidationResponse, String] = {
     logger.info(s"signup ${userSignup.user_id}")
     if (usersMap.containsKey(userSignup.user_id))
       Left(AccountCreationFailed(Some("already same user_id is used")))
@@ -25,7 +25,7 @@ class AuthService extends Logging {
     }
   }
 
-  def getUser(userId: String) : Either[ValidationError, User] = {
+  def getUser(userId: String) : Either[ValidationResponse, User] = {
     logger.info(s"getUser ${userId}")
     if (!usersMap.containsKey(userId))
       Left(UserNotFound())
@@ -35,7 +35,7 @@ class AuthService extends Logging {
     }
   }
 
-  def userUpdate(userId: String, userUpdate: UserUpdate) : Either[ValidationError, User] = {
+  def userUpdate(userId: String, userUpdate: UserUpdate) : Either[ValidationResponse, User] = {
     logger.info(s"userUpdate ${userId}")
     if (!usersMap.containsKey(userId))
       Left(UserNotFound())
@@ -45,5 +45,15 @@ class AuthService extends Logging {
       usersMap.replace(userId, updateUser)
       Right(user)
     }
+  }
+
+  def userDelete(userId: String): ValidationResponse = {
+    logger.info(s"userDelete ${userId}")
+
+    if (usersMap.remove(userId) == null)
+        UserNotFound()
+    else
+      AccountRemovedSuccessfully()
+    // author
   }
 }

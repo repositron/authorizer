@@ -1,6 +1,6 @@
 package endpoint
 
-import domain.auth.ValidationError
+import domain.auth.ValidationResponse
 
 import java.nio.charset.StandardCharsets
 import java.util.Base64

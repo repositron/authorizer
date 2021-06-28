@@ -1,31 +1,34 @@
 package domain.auth
 
 
-sealed trait ValidationError
+sealed trait ValidationResponse
 
-case class UserAlreadyExists() extends ValidationError
+case class UserAlreadyExists() extends ValidationResponse
 
-case class AccountCreationFailed(cause: Option[String] = None) extends ValidationError
+case class AccountCreationFailed(cause: Option[String] = None) extends ValidationResponse
 
-case class UserNotFound() extends ValidationError
+case class UserNotFound() extends ValidationResponse
 
-case class AuthenticationFailed() extends ValidationError
+case class AuthenticationFailed() extends ValidationResponse
+
+case class AccountRemovedSuccessfully() extends ValidationResponse
 
 
-object ValidationError {
-  def cause(validationError: ValidationError): Option[String] = {
+object ValidationResponse {
+  def cause(validationError: ValidationResponse): Option[String] = {
     validationError match {
       case AccountCreationFailed(cause) => cause
       case _ => None
     }
   }
 
-  def message(validationError: ValidationError) : String = {
+  def message(validationError: ValidationResponse) : String = {
     validationError match {
       case UserAlreadyExists() => "Account creation failed"
       case AccountCreationFailed(_) => "Account creation failed"
       case UserNotFound() => "No User found"
       case AuthenticationFailed() =>"Authentication Faild"
+      case AccountRemovedSuccessfully() => "Account and user successfully removed"
     }
   }
 }
