@@ -3,7 +3,9 @@
 # https://www.playframework.com/documentation/latest/ScalaRouting
 # ~~~~
 GET         /users/:id      endpoint.AuthController.getUser(id: String)
++nocsrf
 POST       /signup          endpoint.AuthController.signup()
 +nocsrf
 PATCH       /users/:id      endpoint.AuthController.updateUser(id: String)
++nocsrf
 POST        /close          endpoint.AuthController.close()

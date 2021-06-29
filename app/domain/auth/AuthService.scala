@@ -39,15 +39,20 @@ class AuthService extends Logging {
     getUser(userId).map(_ => true).getOrElse(false)
   }
 
-  def userUpdate(userId: String, userUpdate: UserUpdate) : Either[ValidationResponse, User] = {
-    logger.info(s"userUpdate ${userId}")
+  def userUpdateNicknameComment(userId: String, nickname: Option[String], comment: Option[String]) : Either[ValidationResponse, User] = {
+    logger.info(s"userUpdateNicknameComment ${userId}")
     if (!usersMap.containsKey(userId))
       Left(UserNotFound())
     else {
-      val user = usersMap.get(userId)
-      val updateUser = user.copy(nickName = userUpdate.nickname, comment = userUpdate.comment)
-      usersMap.replace(userId, updateUser)
-      Right(user)
+      val currUser = usersMap.get(userId)
+      val nicknameUpdate = if (nickname.isDefined) nickname else currUser.nickName
+      val commentUpdate = if (comment.isDefined) comment else currUser.comment
+      var updatedUser = currUser.copy(
+        comment = commentUpdate,
+        nickName = nicknameUpdate
+      )
+      usersMap.replace(userId, updatedUser)
+      Right(updatedUser)
     }
   }
 

@@ -22,7 +22,8 @@ object UserSignupSuccessResponse {
 }
 
 
-case class UserUpdate(nickname: Option[String], comment: Option[String])
+case class UserUpdate(nickname: Option[String], comment: Option[String],
+                      user_id: Option[String], password : Option[String])
 object UserUpdate {
   implicit val formats: Format[UserUpdate] = Json.format[UserUpdate]
 }

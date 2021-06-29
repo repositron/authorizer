@@ -1,18 +1,11 @@
 package endpoint
 
-import domain.auth.{AccountCreationFailed, AccountRemovedSuccessfully, AuthService, AuthenticationFailed, User, UserNotFound, UserSignup, UserSignupResponse, UserSignupSuccessResponse, UserUpdate, ValidationResponse}
+import domain.auth.{AccountCreationFailed, AccountRemovedSuccessfully, AuthService, AuthenticationFailed, User, UserNotFound, UserSignup, UserSignupResponse, UserSignupSuccessResponse, UserUpdate, UserUpdateFailed, ValidationResponse}
 import play.api.Logger
-import play.api.data.Form
-import play.api.i18n.Messages.implicitMessagesProviderToMessages
-import play.api.i18n.MessagesApi
 import play.api.libs.json.Format.GenericFormat
 import play.api.libs.json.{JsError, JsObject, JsString, JsSuccess, JsValue, Json}
-import play.api.mvc.{AbstractController, Action, AnyContent, ControllerComponents, Handler, Headers, MessagesActionBuilder, MessagesRequest, Request, Result}
-import play.i18n.MessagesApi
+import play.api.mvc.{AbstractController, Action, AnyContent, ControllerComponents, MessagesActionBuilder, MessagesRequest, Request, Result}
 import util.AuthenticatedRequest
-
-import java.nio.charset.StandardCharsets
-import java.util.Base64
 import javax.inject.Inject
 
 class AuthController @Inject()(messagesAction: MessagesActionBuilder, controllerComponents: ControllerComponents, authService: AuthService) extends  AbstractController(controllerComponents) {
@@ -86,22 +79,34 @@ class AuthController @Inject()(messagesAction: MessagesActionBuilder, controller
   }
 
   def updateUser(userId: String): Action[AnyContent] = {
-    Authenticated { implicit request =>
+    def processJsonRequest(userUpdate: UserUpdate) : Result = {
+      if (userUpdate.user_id.isDefined || userUpdate.password.isDefined) {
+        badRequestResponse(UserUpdateFailed(Some("not updatable user_id and password")))
+      }
+      else if (userUpdate.nickname.isEmpty && userUpdate.comment.isEmpty) {
+        badRequestResponse(UserUpdateFailed(Some("required nickname or comment")))
+      }
+      else {
+        authService.userUpdateNicknameComment(userId, userUpdate.nickname, userUpdate.comment).fold(
+          updateError => {
+            validationErrorResponse(updateError)
+          },
+          success => {
+            Ok(Json.obj("message" -> "User successfully updated",
+              "recipe" -> Json.arr("nickname" -> userUpdate.nickname, "comment" -> userUpdate.comment))
+            )
+          }
+        )
+      }
+    }
 
+    Authenticated { implicit request =>
       logger.info(s"update received")
       request.body.asJson match {
         case Some(bodyAsJson) => {
           bodyAsJson.validate[UserUpdate] match {
             case JsSuccess(userUpdate, _) =>
-              authService.userUpdate(userId, userUpdate).fold(
-                updateError => {
-                  validationErrorResponse(updateError)
-                },
-                success => {
-                  Ok(Json.obj("message" -> "User successfully updated",
-                    "user" -> Json.obj("nickname" -> userUpdate.nickname, "comment" -> userUpdate.comment)))
-                }
-              )
+              processJsonRequest(userUpdate)
             case JsError(errs) =>
               logger.error(s"Unable to parse payload: $errs")
               validationErrorResponse(UserNotFound())
@@ -119,8 +124,9 @@ class AuthController @Inject()(messagesAction: MessagesActionBuilder, controller
       authService.userDelete(request.user) match {
         case validation @ AccountRemovedSuccessfully() =>
           Ok(Json.obj("message" -> ValidationResponse.message(validation)))
+          // TODO close
         case _ =>
-          // should happen because user wouldn"t be authorised
+          // should not happen because user wouldn't be authorised
           NotFound(Json.obj("message" -> ValidationResponse.message(UserNotFound())))
       }
     }
@@ -130,19 +136,20 @@ class AuthController @Inject()(messagesAction: MessagesActionBuilder, controller
     val jsonMsg = Json.obj("message" -> ValidationResponse.message(error))
     ValidationResponse.cause(error) match {
       case Some(causeMessage) =>
-        jsonMsg + ("cause" -> JsString(causeMessage))
+        NotFound(jsonMsg + ("cause" -> JsString(causeMessage)))
       case _ =>
+        NotFound(jsonMsg)
     }
-    NotFound(jsonMsg)
+
   }
 
   private def badRequestResponse(error: ValidationResponse) : Result = {
     val jsonMsg = Json.obj("message" -> ValidationResponse.message(error))
     ValidationResponse.cause(error) match {
       case Some(causeMessage) =>
-        jsonMsg + ("cause" -> JsString(causeMessage))
+        BadRequest(jsonMsg + ("cause" -> JsString(causeMessage)))
       case _ =>
+        BadRequest(jsonMsg)
     }
-    BadRequest(jsonMsg)
   }
 }
