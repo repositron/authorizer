@@ -4,5 +4,6 @@
 # ~~~~
 GET         /users/:id      endpoint.AuthController.getUser(id: String)
 POST       /signup          endpoint.AuthController.signup()
++nocsrf
 PATCH       /users/:id      endpoint.AuthController.updateUser(id: String)
 POST        /close          endpoint.AuthController.close()
