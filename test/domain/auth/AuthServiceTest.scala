@@ -22,4 +22,13 @@ class AuthServiceTest extends FunSuite {
     assertResult(User("user1", "pass1", Some("nick1"), Some("comment1")))(userUpdate.getOrElse(fail("either was not Right!")))
   }
 
+  test("checkUserPassword user invalid password") {
+    val f = fixture
+    assert(!f.authService.checkUserPassword("user1", "abced"))
+  }
+
+  test("checkUserPassword user valid password") {
+    val f = fixture
+    assert(f.authService.checkUserPassword("user1", "pass1"))
+  }
 }

@@ -35,8 +35,10 @@ class AuthService extends Logging {
     }
   }
 
-  def check(userId: String, password: String) : Boolean = {
-    getUser(userId).map(_ => true).getOrElse(false)
+  def checkUserPassword(userId: String, password: String) : Boolean = {
+    getUser(userId).map(userInfo => {
+      userInfo.userId == userId && userInfo.password == password
+    }).getOrElse(false)
   }
 
   def userUpdateNicknameComment(userId: String, nickname: Option[String], comment: Option[String]) : Either[ValidationResponse, User] = {

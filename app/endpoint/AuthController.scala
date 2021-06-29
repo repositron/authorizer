@@ -8,14 +8,14 @@ import play.api.mvc.{AbstractController, Action, AnyContent, ControllerComponent
 import util.AuthenticatedRequest
 import javax.inject.Inject
 
-class AuthController @Inject()(messagesAction: MessagesActionBuilder, controllerComponents: ControllerComponents, authService: AuthService) extends  AbstractController(controllerComponents) {
+class AuthController @Inject()(controllerComponents: ControllerComponents, authService: AuthService) extends  AbstractController(controllerComponents) {
   private val logger = Logger(getClass)
 
   def Authenticated(f: AuthenticatedRequest => Result): Action[AnyContent] = {
     Action { request =>
       request.headers.get("Authorization") match {
         case Some(auth) => {
-          BasicAuthentication.authorized(auth)(authService.check) match {
+          BasicAuthentication.authorized(auth)(authService.checkUserPassword) match {
             case Some(user) =>
               logger.info(s"Authenticated $user")
               f(AuthenticatedRequest(user, request))
@@ -34,7 +34,7 @@ class AuthController @Inject()(messagesAction: MessagesActionBuilder, controller
   }
 
   def signup(): Action[JsValue] = {
-    messagesAction(parse.json) { implicit request: MessagesRequest[JsValue] =>
+    Action(parse.json) { implicit request  =>
       logger.info(s"signup received")
       request.body.validate[UserSignup] match {
         case JsSuccess(userSignup, _) =>
@@ -106,7 +106,11 @@ class AuthController @Inject()(messagesAction: MessagesActionBuilder, controller
         case Some(bodyAsJson) => {
           bodyAsJson.validate[UserUpdate] match {
             case JsSuccess(userUpdate, _) =>
-              processJsonRequest(userUpdate)
+              if (userId != request.user) {
+                // check authenticated user is making the request
+                badRequestResponse(UserUpdateFailed(Some("not updatable user_id and password")))
+              } else
+                processJsonRequest(userUpdate)
             case JsError(errs) =>
               logger.error(s"Unable to parse payload: $errs")
               validationErrorResponse(UserNotFound())
