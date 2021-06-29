@@ -1,11 +1,12 @@
 package endpoint
 
-import domain.auth.{AccountCreationFailed, AccountRemovedSuccessfully, AuthService, AuthenticationFailed, User, UserNotFound, UserSignup, UserSignupResponse, UserSignupSuccessResponse, UserUpdate, UserUpdateFailed, ValidationResponse}
+import domain.auth.{AccountCreationFailed, AccountRemovedSuccessfully, AuthService, AuthenticationFailed, NoPermissionForUpdate, User, UserNotFound, UserSignup, UserSignupResponse, UserSignupSuccessResponse, UserUpdate, UserUpdateFailed, ValidationResponse}
 import play.api.Logger
 import play.api.libs.json.Format.GenericFormat
 import play.api.libs.json.{JsError, JsObject, JsString, JsSuccess, JsValue, Json}
 import play.api.mvc.{AbstractController, Action, AnyContent, ControllerComponents, MessagesActionBuilder, MessagesRequest, Request, Result}
 import util.AuthenticatedRequest
+
 import javax.inject.Inject
 
 class AuthController @Inject()(controllerComponents: ControllerComponents, authService: AuthService) extends  AbstractController(controllerComponents) {
@@ -34,13 +35,13 @@ class AuthController @Inject()(controllerComponents: ControllerComponents, authS
   }
 
   def signup(): Action[JsValue] = {
-    Action(parse.json) { implicit request  =>
+    Action(parse.json) { implicit request =>
       logger.info(s"signup received")
       request.body.validate[UserSignup] match {
         case JsSuccess(userSignup, _) =>
           authService.signup(userSignup).fold(
             error => {
-              validationErrorResponse(error)
+              NotFound(responseJson(error))
             },
             success => {
               Ok(Json.obj("message" -> success,
@@ -49,7 +50,7 @@ class AuthController @Inject()(controllerComponents: ControllerComponents, authS
           )
         case JsError(errs) =>
           logger.error(s"Unable to parse payload: $errs")
-          badRequestResponse(AccountCreationFailed(Some("required user_id and password")))
+          BadRequest(responseJson(AccountCreationFailed(Some("required user_id and password"))))
       }
     }
   }
@@ -59,7 +60,7 @@ class AuthController @Inject()(controllerComponents: ControllerComponents, authS
       logger.info(s"get user received $userId")
       authService.getUser(userId).fold(
         error => {
-          NotFound(Json.obj("message" -> ValidationResponse.message(error)))
+          NotFound(responseJson(error))
         },
         success => Ok(
           Json.obj("message" -> "User details by user_id",
@@ -78,22 +79,31 @@ class AuthController @Inject()(controllerComponents: ControllerComponents, authS
     }
   }
 
+  private def formatUpdateUserJson(user: User): JsObject = {
+    val nickname = user.nickName.getOrElse(user.userId)
+    val jsonMsg = Json.obj( "nickname" -> nickname)
+    user.comment match {
+      case Some(c) => jsonMsg + ("comment" -> JsString(c))
+      case None => jsonMsg
+    }
+  }
+
   def updateUser(userId: String): Action[AnyContent] = {
-    def processJsonRequest(userUpdate: UserUpdate) : Result = {
+    def processJsonRequest(userUpdate: UserUpdate): Result = {
       if (userUpdate.user_id.isDefined || userUpdate.password.isDefined) {
-        badRequestResponse(UserUpdateFailed(Some("not updatable user_id and password")))
+        BadRequest(responseJson(UserUpdateFailed(Some("not updatable user_id and password"))))
       }
       else if (userUpdate.nickname.isEmpty && userUpdate.comment.isEmpty) {
-        badRequestResponse(UserUpdateFailed(Some("required nickname or comment")))
+        BadRequest(responseJson(UserUpdateFailed(Some("required nickname or comment"))))
       }
       else {
         authService.userUpdateNicknameComment(userId, userUpdate.nickname, userUpdate.comment).fold(
           updateError => {
-            validationErrorResponse(updateError)
+            NotFound(responseJson(updateError))
           },
-          success => {
+          updateUser => {
             Ok(Json.obj("message" -> "User successfully updated",
-              "recipe" -> Json.arr("nickname" -> userUpdate.nickname, "comment" -> userUpdate.comment))
+              "recipe" -> Json.arr(formatUpdateUserJson(updateUser)))
             )
           }
         )
@@ -108,15 +118,16 @@ class AuthController @Inject()(controllerComponents: ControllerComponents, authS
             case JsSuccess(userUpdate, _) =>
               if (userId != request.user) {
                 // check authenticated user is making the request
-                badRequestResponse(UserUpdateFailed(Some("not updatable user_id and password")))
-              } else
+                 Forbidden(responseJson(NoPermissionForUpdate()))
+              }
+              else
                 processJsonRequest(userUpdate)
             case JsError(errs) =>
               logger.error(s"Unable to parse payload: $errs")
-              validationErrorResponse(UserNotFound())
+              NotFound(responseJson(UserNotFound()))
           }
         }
-        case None => validationErrorResponse(UserNotFound())
+        case None => NotFound(responseJson(UserNotFound()))
       }
     }
   }
@@ -126,34 +137,23 @@ class AuthController @Inject()(controllerComponents: ControllerComponents, authS
       logger.info(s"closed received")
       // use user from Authenticated
       authService.userDelete(request.user) match {
-        case validation @ AccountRemovedSuccessfully() =>
+        case validation@AccountRemovedSuccessfully() =>
           Ok(Json.obj("message" -> ValidationResponse.message(validation)))
-          // TODO close
+        // TODO close
         case _ =>
           // should not happen because user wouldn't be authorised
-          NotFound(Json.obj("message" -> ValidationResponse.message(UserNotFound())))
+          NotFound(responseJson((UserNotFound())))
       }
     }
   }
 
-  private def validationErrorResponse(error: ValidationResponse): Result = {
-    val jsonMsg = Json.obj("message" -> ValidationResponse.message(error))
-    ValidationResponse.cause(error) match {
+  private def responseJson(validation: ValidationResponse): JsObject = {
+    val jsonMsg = Json.obj("message" -> ValidationResponse.message(validation))
+    ValidationResponse.cause(validation) match {
       case Some(causeMessage) =>
-        NotFound(jsonMsg + ("cause" -> JsString(causeMessage)))
+        jsonMsg + ("cause" -> JsString(causeMessage))
       case _ =>
-        NotFound(jsonMsg)
-    }
-
-  }
-
-  private def badRequestResponse(error: ValidationResponse) : Result = {
-    val jsonMsg = Json.obj("message" -> ValidationResponse.message(error))
-    ValidationResponse.cause(error) match {
-      case Some(causeMessage) =>
-        BadRequest(jsonMsg + ("cause" -> JsString(causeMessage)))
-      case _ =>
-        BadRequest(jsonMsg)
+        jsonMsg
     }
   }
 }

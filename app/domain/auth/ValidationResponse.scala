@@ -15,6 +15,8 @@ case class AccountRemovedSuccessfully() extends ValidationResponse
 
 case class UserUpdateFailed(cause: Option[String] = None) extends ValidationResponse
 
+case class NoPermissionForUpdate() extends ValidationResponse
+
 
 object ValidationResponse {
   def cause(validationError: ValidationResponse): Option[String] = {
@@ -33,6 +35,7 @@ object ValidationResponse {
       case AuthenticationFailed() =>"Authentication Faild"
       case AccountRemovedSuccessfully() => "Account and user successfully removed"
       case UserUpdateFailed(_) => "User updation failed"
+      case NoPermissionForUpdate() => "No Permission for Update"
     }
   }
 }
